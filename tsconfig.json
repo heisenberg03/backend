@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+      "target": "esnext",
+      "module": "commonjs",
+      "lib": ["ES2020"],
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "moduleResolution": "node",
+      "types": ["node", "mercurius"],
+      "resolveJsonModule": true
+    },
+    "include": ["src/**/*", "src/types/**/*.d.ts"],
+    "exclude": ["node_modules", "dist"]
+  }
+  

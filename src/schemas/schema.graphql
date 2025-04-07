@@ -1,0 +1,62 @@
+# src/schemas/schema.graphql
+type User {
+  id: ID!
+  username: String!
+  fullName: String!
+  phone: String
+  email: String
+  profilePicture: String
+  location: Location
+  bio: String
+  budget: Float
+  artistType: String
+  artistRating: Float
+  artistReviewCount: Int
+  hostBio: String
+  hostRating: Float
+  hostReviewCount: Int
+  categories: [Category!]
+  subcategories: [Subcategory!]
+  youtubeId: String
+  youtubeDisplay: Boolean
+  instagramUsername: String
+  instagramDisplay: Boolean
+  facebookId: String
+  facebookDisplay: Boolean
+  xUsername: String
+  xDisplay: Boolean
+  isArtist: Boolean!
+}
+
+type Location {
+  id: ID!
+  address: String
+  city: String
+  latitude: Float
+  longitude: Float
+}
+
+type Category {
+  id: ID!
+  name: String!
+}
+
+type Subcategory {
+  id: ID!
+  name: String!
+}
+
+type AuthResponse {
+  accessToken: String!
+  user: User!
+}
+
+type Query {
+  currentUser: User!
+}
+
+type Mutation {
+  signUp(phone: String!, username: String!, fullName: String!): User!
+  signInWithPhone(phone: String!, otp: String!): AuthResponse!
+  logout: Boolean!
+}
