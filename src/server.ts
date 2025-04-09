@@ -1,56 +1,94 @@
 import Fastify from 'fastify';
 import mercurius from 'mercurius';
 import { Pool } from 'pg';
-import pino from 'pino';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
+import { Server } from 'socket.io';
 import { schema } from './schemas';
 import { resolvers } from './controllers/resolvers';
-import { authMiddleware } from './middleware/auth';
 import { UserService } from './services/userService';
-
-// Import to apply type augmentation
+import { verifyToken } from './utils/jwt';
 import './types/mercurius';
+import pino from 'pino';
 
-const logger = pino({ level: 'info' });
-const app = Fastify({ logger });
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const userService = new UserService(pool);
-
-// Register CORS
-app.register(cors, {
-  origin: '*', // Adjust for production
-  methods: ['GET', 'POST'],
-  credentials: true,
+const app = Fastify({
+  logger: {
+    level: process.env.LOG_LEVEL || 'info',
+  },
 });
 
-// Register rate limiting
-app.register(rateLimit, {
-  max: 100,
-  timeWindow: '1m',
+const pool = new Pool({ connectionString: process.env.DATABASE_URL || 'postgres://localhost:5432/yourdb' });
+const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  transport: process.env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
 });
 
-// Register Mercurius
+const userService = new UserService(pool, logger);
+
+app.log = logger;
+app.register(cors, { origin: '*', methods: ['GET', 'POST'], credentials: true });
+app.register(rateLimit, { max: 100, timeWindow: '1m' });
+
 app.register(mercurius, {
   schema,
   resolvers,
-  context: (request) => ({
-    db: pool,
-    logger,
-    userService,
-    user: authMiddleware(request, userService),
-    headers: request.headers,
-    app,              // Default MercuriusContext property
-    reply: request.reply, // Default MercuriusContext property
-    request: request.raw, // Default MercuriusContext property
-  }),
+  context: async (request, reply) => {
+    const authHeader = request.headers.authorization;
+    let user = null;
+
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      if (token) {
+        try {
+          user = verifyToken(token);
+          await userService.updateLastActive(user.id);
+        } catch (error: any) {
+          app.log.warn(`Token verification failed: ${error.message}`);
+        }
+      }
+    }
+
+    return { db: pool, logger: app.log, userService, user, headers: request.headers, app, reply, request: request.raw };
+  },
+  graphiql: true,
 });
 
-app.listen({ port: 4000 }, (err) => {
+const io = new Server(app.server, { cors: { origin: '*' } });
+io.on('connection', (socket) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    socket.disconnect();
+    return;
+  }
+
+  try {
+    const user = verifyToken(token);
+    socket.join(user.id);
+    app.log.info(`User ${user.id} connected via WebSocket`);
+    userService.updateLastActive(user.id);
+
+    socket.on('message', (msg) => {
+      userService.updateLastActive(user.id);
+      const recipientId = msg.recipientId;
+      io.to(recipientId).emit('message', { senderId: user.id, text: msg.text, timestamp: Date.now() });
+      userService.updateLastActive(recipientId);
+    });
+  } catch (error: any) {
+    const reason = error.name === 'TokenExpiredError' ? 'Token expired' : 'Authentication failed';
+    socket.emit('error', { message: 'Authentication failed', reason });
+    socket.disconnect();
+    app.log.warn(`WebSocket auth failed: ${error.message}`);
+  }
+});
+
+app.decorate('io', io);
+
+app.listen({ port: Number(process.env.PORT) || 4000 }, (err, address) => {
   if (err) {
-    logger.error(err);
+    app.log.error(err);
     process.exit(1);
   }
-  logger.info('Server running at http://localhost:4000/graphql');
+  app.log.info(`Server running at ${address}`);
 });
+
+export default app;

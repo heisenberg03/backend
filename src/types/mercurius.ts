@@ -8,5 +8,8 @@ declare module 'mercurius' {
     userService: UserService;
     user?: { id: string; username: string; isArtist: boolean };
     headers: any;
+    app: import('fastify').FastifyInstance;
+    reply: import('fastify').FastifyReply;
+    request: import('fastify').FastifyRequest;
   }
 }

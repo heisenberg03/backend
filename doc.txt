@@ -1,0 +1,28 @@
+Technologies
+Fastify: Lightweight server framework.
+Mercurius: GraphQL integration for Fastify.
+Socket.IO: WebSocket implementation for real-time features.
+Node-Cache: In-memory caching for tokens and user data.
+PostgreSQL: Persistent storage with connection pooling.
+Persistent Login: Users remain logged in indefinitely unless they log out or are inactive for 90 days.
+Revocation: Immediate on logout, inactivity-based after 90 days.
+Performance: ~1-5ms per request, ~1-2% CPU for 10K users.
+Cost: ~$5-10/month VPS for 10K-20K users, ~$100-200/month for 1M users.
+Key Components
+Tokens:
+Access Token: 1-hour TTL, refreshed via refresh token.
+Refresh Token: No TTL, stored in node-cache with lastActive, revoked on logout or 90-day inactivity.
+Caching:
+Client-Side: Apollo Client with AsyncStorage (~1ms).
+Server-Side: node-cache (1-hour TTL for currentUser, persistent for refresh tokens).
+WebSockets:
+Activity tracked via connection events (~1-5ms/day/user), no periodic pings.
+Real-time updates for currentUser, chats, notifications (~1-5ms/event).
+Database:
+PostgreSQL with pooling (pg), minimal joins via caching.
+Authentication Flow
+Login: SIGN_IN_WITH_PHONE issues tokens, stores in AsyncStorage/node-cache, caches currentUser.
+Requests: Access token verified in context (~1-2ms), refreshed if expired (~1ms).
+Activity: WebSocket connect or events (notifications, chats) update lastActive (~1-5ms).
+Logout: Clears refresh token from node-cache.
+Inactivity: 90 days since last activity triggers re-login on next use.

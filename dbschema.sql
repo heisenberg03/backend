@@ -24,6 +24,7 @@ CREATE TABLE Users (
     facebook_display BOOLEAN DEFAULT FALSE,
     x_username VARCHAR(255),
     x_display BOOLEAN DEFAULT FALSE,
+    device_token VARCHAR(255)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

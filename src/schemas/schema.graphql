@@ -48,15 +48,63 @@ type Subcategory {
 
 type AuthResponse {
   accessToken: String!
+  refreshToken: String!
   user: User!
+}
+
+type Category {
+  id: ID!
+  name: String!
+  subCategories: [SubCategory!]!
+}
+
+type SubCategory {
+  id: ID!
+  name: String!
+}
+
+type Notification {
+  id: ID!
+  message: String!
+  timestamp: String!
+  type: String!
+  relatedId: String
+  read: Boolean!
+}
+
+type Message {
+  id: ID!
+  senderId: String!
+  receiverId: String!
+  content: String!
+  timestamp: String!
+  read: Boolean!
+}
+
+type ChatListItem {
+  id: ID!
+  userId: String!
+  fullName: String!
+  profilePicture: String
+  lastMessage: Message
+  unreadCount: Int!
+  isOnline: Boolean!
 }
 
 type Query {
   currentUser: User!
+  categories: [Category!]!
+  notifications(userId: ID!): [Notification!]!
+  chatMessages(receiverId: ID!): [Message!]!
+  chatList(userId: ID!): [ChatListItem!]!
 }
 
 type Mutation {
   signUp(phone: String!, username: String!, fullName: String!): User!
   signInWithPhone(phone: String!, otp: String!): AuthResponse!
+  refreshToken(refreshToken: String!): AuthResponse!
   logout: Boolean!
+  UpdateDeviceToken(deviceToken: String!): Boolean! 
+  markAsRead(messageId: ID!): Message!
+  sendMessage(receiverId: ID!, content: String!): Message!
 }
